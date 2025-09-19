@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Lesson: Getting Off the Hamster Wheel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The SPA is structured as a linear, multi-step interactive lesson. The flow is: 1. Hook, 2. Interactive Sorting Activity, 3. Temporal Worldview Deep Dive, 4. Eternal Worldview Deep Dive, 5. Practical Application Game, 6. Personal Reflection, 7. Final Summary. This step-by-step approach breaks down complex ideas into manageable segments. Navigation is handled by 'Next' and 'Back' buttons, with a progress bar for clear user orientation. -->
+    <!-- Visualization & Content Choices: Report Info: Differentiating temporal vs. eternal values. -> Goal: Allow users to actively categorize and understand this difference. -> Viz/Presentation Method: An interactive click-to-sort card game. A dynamically updating Chart.js donut chart visualizes choices. Report Info: Illustrating worldview consequences -> Goal: Make the effects of different mindsets tangible. -> Viz/Presentation Method: A text-based choice game ("The Choice Game"). -> Interaction: Users select actions for given scenarios. Their choices update "Stress" and "Fulfillment" meters, providing immediate feedback on the practical outcomes of each worldview. -> Justification: The game simulates real-life decisions, making the theological concepts directly applicable and memorable for a teenage audience. -> Library/Method: Vanilla JS for logic, Chart.js for visualization. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDF8F2;
+            color: #4A4A4A;
+        }
+        .main-container {
+            background: linear-gradient(135deg, #ffffff 0%, #fffbf5 100%);
+        }
+        .lesson-section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .lesson-section.active {
+            display: block;
+            opacity: 1;
+        }
+        .card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1);
+        }
+        .value-card {
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .selected-temporal {
+            border-color: #F59E0B;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+        }
+        .selected-lasting {
+            border-color: #10B981;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+        }
+        .progress-bar-fill {
+            transition: width 0.4s ease-in-out;
+        }
+        .btn-animated {
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .btn-animated:active {
+            transform: translateY(2px) scale(0.98);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+
+        /* Treadmill Animation */
+        .treadmill {
+            width: 120px;
+            height: 100px;
+            position: relative;
+        }
+        .runner {
+            width: 20px;
+            height: 40px;
+            background: #4A4A4A;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 10px 10px 0 0;
+            animation: run-body 0.5s linear infinite;
+        }
+        .runner::before { /* Head */
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 5px;
+            width: 10px;
+            height: 10px;
+            background: #4A4A4A;
+            border-radius: 50%;
+        }
+        .runner-leg {
+            width: 5px;
+            height: 20px;
+            background: #4A4A4A;
+            position: absolute;
+            bottom: -15px;
+            border-radius: 3px;
+        }
+        .leg-l {
+            left: 2px;
+            animation: run-leg-l 0.5s linear infinite;
+        }
+        .leg-r {
+            right: 2px;
+            animation: run-leg-r 0.5s linear infinite;
+        }
+        .treadmill-base {
+            width: 100%;
+            height: 10px;
+            background: #D1D5DB;
+            position: absolute;
+            bottom: 10px;
+            border-radius: 5px;
+        }
+        .treadmill-belt {
+            width: 100%;
+            height: 10px;
+            background: repeating-linear-gradient(90deg, #6B7280, #6B7280 10px, #4B5563 10px, #4B5563 20px);
+            position: absolute;
+            bottom: 10px;
+            animation: move-belt 0.5s linear infinite;
+        }
+
+        @keyframes run-body { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-2px); } }
+        @keyframes run-leg-l { 0%, 100% { transform: rotate(30deg); } 50% { transform: rotate(-30deg); } }
+        @keyframes run-leg-r { 0%, 100% { transform: rotate(-30deg); } 50% { transform: rotate(30deg); } }
+        @keyframes move-belt { from { background-position-x: 0; } to { background-position-x: -20px; } }
+
+        /* Glasses Animation */
+        .glasses-icon {
+            display: inline-block;
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: slide-in-focus 0.8s forwards;
+            animation-delay: 0.2s;
+        }
+        @keyframes slide-in-focus {
+            0% { opacity: 0; transform: translateX(-20px); }
+            60% { opacity: 1; transform: translateX(5px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-4xl main-container rounded-2xl shadow-xl p-6 md:p-10">
+        
+        <header class="mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-800">Getting Off the Hamster Wheel</h1>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-4">
+                <div id="progress-bar" class="bg-amber-500 h-2.5 rounded-full progress-bar-fill" style="width: 14.28%"></div>
+            </div>
+        </header>
+
+        <main id="lesson-container">
+            <!-- Section 1: The Hook -->
+            <section id="section-1" class="lesson-section active text-center">
+                <h2 class="text-xl md:text-2xl font-semibold mb-4 text-gray-700">The Social Media Treadmill</h2>
+                <p class="max-w-2xl mx-auto mb-6 text-gray-600">This lesson explores the idea of a "treadmill life"—the feeling of constantly running but going nowhere. We'll start with an example many of us know well: social media. The goal is to think about where we find our value and what truly lasts.</p>
+                <div class="flex justify-center items-center mb-6">
+                    <div class="treadmill">
+                        <div class="runner">
+                            <div class="runner-leg leg-l"></div>
+                            <div class="runner-leg leg-r"></div>
+                        </div>
+                        <div class="treadmill-base"></div>
+                        <div class="treadmill-belt"></div>
+                    </div>
+                </div>
+                <p class="text-lg font-medium text-gray-800">What does it feel like to chase 'likes,' 'views,' or keep up with the latest trends online?</p>
+                <p class="text-sm text-gray-500 mt-2">(Think about words like: stressful, endless, competitive, exhausting, validating, exciting...)</p>
+            </section>
+
+            <!-- Section 2: Values Sort -->
+            <section id="section-2" class="lesson-section">
+                 <h2 class="text-xl md:text-2xl font-semibold mb-2 text-center text-gray-700">What's It All Worth?</h2>
+                 <p class="max-w-3xl mx-auto mb-6 text-gray-600 text-center">Now let's explore the difference between temporary values and lasting values. Click on each card below to sort it into the category where you think it fits best. Watch the chart update as you go!</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2">
+                        <h3 class="font-bold text-lg text-center mb-4 text-gray-800">Value Cards (Click to Sort)</h3>
+                        <div id="value-cards-container" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        </div>
+                    </div>
+                    <div class="md:col-span-1">
+                        <h3 class="font-bold text-lg text-center mb-4 text-gray-800">Your Results</h3>
+                        <div class="chart-container">
+                            <canvas id="valuesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                    <div>
+                        <h3 class="font-bold text-lg text-center text-amber-600 mb-2">Temporal Pile</h3>
+                        <p class="text-sm text-center text-gray-500 mb-2">Things that are temporary, can change, or can be lost.</p>
+                        <div id="temporal-pile" class="bg-amber-50 p-4 rounded-lg min-h-[100px] transition-all"></div>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-center text-emerald-600 mb-2">Lasting Pile</h3>
+                        <p class="text-sm text-center text-gray-500 mb-2">Things that are more permanent or foundational.</p>
+                        <div id="lasting-pile" class="bg-emerald-50 p-4 rounded-lg min-h-[100px] transition-all"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Temporal Deep Dive -->
+            <section id="section-3" class="lesson-section">
+                <h2 class="text-xl md:text-2xl font-semibold mb-2 text-center text-gray-700">Deep Dive: Life on the Treadmill</h2>
+                <p class="max-w-3xl mx-auto mb-6 text-gray-600 text-center">Let's look closer at a life built on temporal (temporary) values. This is often the default way of seeing the world if we don't have a bigger, spiritual anchor.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-amber-50 p-6 rounded-lg">
+                        <h3 class="font-semibold text-lg text-amber-800 mb-3 flex items-center"><span class="glasses-icon text-2xl mr-3">👓</span>The Cause: Why We Live This Way</h3>
+                        <p class="text-amber-900">Without a higher truth to rely on, we're forced to create our own meaning and worth. We look at the world around us for clues, and what we see celebrated is often success, popularity, and appearance. So, we start chasing those things to feel valuable.</p>
+                    </div>
+                    <div class="bg-amber-50 p-6 rounded-lg">
+                        <h3 class="font-semibold text-lg text-amber-800 mb-3 flex items-center"><span class="text-2xl mr-3">😟</span>The Effect: How It Changes You</h3>
+                        <div class="text-amber-900">
+                           <p class="font-bold">Your Thinking:</p>
+                           <ul class="list-disc list-inside mb-3">
+                               <li>Constant comparison and anxiety.</li>
+                               <li>Fear of failure defines you.</li>
+                               <li>Your identity is tied to your performance.</li>
+                           </ul>
+                           <p class="font-bold">Your Living:</p>
+                           <ul class="list-disc list-inside">
+                               <li>An endless cycle of striving to prove yourself.</li>
+                               <li>Relationships can feel competitive or transactional.</li>
+                               <li>Leads to burnout and feeling "never good enough."</li>
+                           </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 4: Eternal Deep Dive -->
+            <section id="section-4" class="lesson-section">
+                <h2 class="text-xl md:text-2xl font-semibold mb-2 text-center text-gray-700">Deep Dive: Finding Solid Ground</h2>
+                <p class="max-w-3xl mx-auto mb-6 text-gray-600 text-center">Now let's explore the alternative: a life rooted in eternal value. From a Christian perspective, this view starts and ends with God.</p>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-emerald-50 p-6 rounded-lg">
+                        <h3 class="font-semibold text-lg text-emerald-800 mb-3 flex items-center"><span class="glasses-icon text-2xl mr-3">✝️</span>The Foundation: Rooted in God</h3>
+                        <p class="text-emerald-900">This worldview begins with the belief in a creator God who is eternal, good, and loving. The most important truth is that every single person is created <span class="font-bold">"in the image of God"</span> (Genesis 1:27). This means your value isn't based on what you do, but on Who made you. It's an un-earnable, un-losable gift.</p>
+                    </div>
+                    <div class="bg-emerald-50 p-6 rounded-lg">
+                        <h3 class="font-semibold text-lg text-emerald-800 mb-3 flex items-center"><span class="text-2xl mr-3">😌</span>The Effect: How It Changes You</h3>
+                        <div class="text-emerald-900">
+                           <p class="font-bold">Your Thinking:</p>
+                           <ul class="list-disc list-inside mb-3">
+                               <li>Freedom from comparison and anxiety.</li>
+                               <li>Your identity is secure in God's love.</li>
+                               <li>Failure is an event, not your identity.</li>
+                           </ul>
+                           <p class="font-bold">Your Living:</p>
+                           <ul class="list-disc list-inside">
+                               <li>Motivated by love and service, not by a need for approval.</li>
+                               <li>You can build authentic, grace-filled relationships.</li>
+                               <li>Find deep purpose in knowing and serving God.</li>
+                           </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 5: The Choice Game -->
+            <section id="section-5" class="lesson-section">
+                <h2 class="text-xl md:text-2xl font-semibold mb-2 text-center text-gray-700">Practical Application: The Choice Game</h2>
+                <p class="max-w-3xl mx-auto mb-6 text-gray-600 text-center">Let's see how these two worldviews play out in real life. For each scenario, pick the choice that feels most like you. Watch how your choices affect your Stress and Fulfillment levels.</p>
+                
+                <div class="flex justify-around mb-4 text-center">
+                    <div>
+                        <p class="font-bold text-lg text-red-600">Stress</p>
+                        <p id="stress-level" class="text-2xl font-bold">0</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-lg text-green-600">Fulfillment</p>
+                        <p id="fulfillment-level" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+
+                <div id="game-container" class="bg-gray-50 p-6 rounded-lg min-h-[250px]">
+                    <div id="scenario-container">
+                        <p id="scenario-text" class="text-lg font-medium text-center text-gray-800 mb-6"></p>
+                        <div id="choices-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    </div>
+                    <div id="feedback-container" class="text-center hidden">
+                        <p id="feedback-text" class="font-semibold mb-4"></p>
+                        <button id="next-scenario-btn" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-6 rounded-lg btn-animated">Continue</button>
+                    </div>
+                     <div id="game-end-container" class="text-center hidden">
+                        <h3 class="text-xl font-bold mb-4">Game Over!</h3>
+                        <p id="game-end-text" class="mb-4"></p>
+                        <button id="restart-game-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg btn-animated">Play Again</button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Section 6: Reflection -->
+            <section id="section-6" class="lesson-section">
+                <h2 class="text-xl md:text-2xl font-semibold mb-2 text-center text-gray-700">Purpose Beyond the "Like"</h2>
+                <p class="max-w-3xl mx-auto mb-6 text-gray-600 text-center">This is a space for your own thoughts. There are no right or wrong answers. Your response is private and won't be saved.</p>
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <label for="reflection" class="block text-lg font-medium text-gray-800 mb-4">Imagine you woke up tomorrow and knew, without a doubt, that you were 100% valuable and accepted by God just as you are. You have nothing to prove to anyone. How would that change what you do with your day?</label>
+                    <textarea id="reflection" rows="6" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"></textarea>
+                </div>
+            </section>
+
+            <!-- Section 7: Summary -->
+            <section id="section-7" class="lesson-section text-center">
+                <h2 class="text-2xl md:text-3xl font-bold mb-4 text-gray-700">Lesson Summary: Key Takeaways</h2>
+                <div class="text-left max-w-2xl mx-auto space-y-6">
+                    <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                        <h3 class="font-semibold text-lg text-amber-800 mb-2">The Temporal "Treadmill" Life:</h3>
+                        <ul class="list-disc list-inside text-amber-900 space-y-1">
+                            <li>Bases worth on performance, popularity, and possessions.</li>
+                            <li>Leads to a cycle of anxiety, comparison, and burnout.</li>
+                            <li>Asks the question: "Am I good enough?"</li>
+                        </ul>
+                    </div>
+                    <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                        <h3 class="font-semibold text-lg text-emerald-800 mb-2">The Eternal "Solid Ground" Life:</h3>
+                        <ul class="list-disc list-inside text-emerald-900 space-y-1">
+                            <li>Bases worth on being created in the image of God.</li>
+                            <li>Leads to freedom, peace, and a purpose beyond yourself.</li>
+                            <li>Answers with the truth: "You are already valued."</li>
+                        </ul>
+                    </div>
+                    <p class="text-center text-gray-600 pt-4">Remember, getting off the treadmill is a daily choice to find your identity in God's unchanging love rather than the world's shifting standards.</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="mt-8 pt-6 border-t border-gray-200 flex justify-between items-center">
+            <button id="back-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg transition invisible btn-animated">Back</button>
+            <button id="next-btn" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-6 rounded-lg transition btn-animated">Next</button>
+        </footer>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sections = document.querySelectorAll('.lesson-section');
+    const nextBtn = document.getElementById('next-btn');
+    const backBtn = document.getElementById('back-btn');
+    const progressBar = document.getElementById('progress-bar');
+    let currentSection = 0;
+
+    const values = [
+        'Popularity', 'Kindness', 'Wealth', 'Integrity / Honesty', 
+        'Career Success', 'Helping Others', 'Physical Appearance', 
+        'Family Relationships', 'Having the latest tech', 'Faith / Spirituality', 
+        'Courage', 'Good Grades', 'Love', 'Social Media Fame', 'Patience'
+    ];
+
+    const valueCardsContainer = document.getElementById('value-cards-container');
+    const temporalPile = document.getElementById('temporal-pile');
+    const lastingPile = document.getElementById('lasting-pile');
+    let valueStates = {};
+
+    let valuesChart;
+
+    const gameScenarios = [
+        {
+            scenario: "You post a photo online and it doesn't get as many likes as you hoped. You feel disappointed.",
+            choices: [
+                { text: "Delete it and post a different one you think will do better.", type: 'temporal', stress: 15, fulfillment: -5, feedback: "Chasing likes puts you on a performance treadmill. Your stress goes up." },
+                { text: "Leave it up. Your value isn't determined by likes.", type: 'eternal', stress: -10, fulfillment: 10, feedback: "Basing your worth on something solid reduces stress and brings peace." }
+            ]
+        },
+        {
+            scenario: "You get a lower grade on a test than you studied for. Your friend got a better score.",
+            choices: [
+                { text: "Feel jealous and spend the rest of the day comparing yourself to them.", type: 'temporal', stress: 20, fulfillment: -10, feedback: "Comparison is the thief of joy. Focusing on performance adds a lot of stress." },
+                { text: "Congratulate them and ask God to help you see your own worth beyond grades.", type: 'eternal', stress: -5, fulfillment: 15, feedback: "Finding your identity in God frees you from comparison. You can genuinely be happy for others." }
+            ]
+        },
+        {
+            scenario: "A new student at school is sitting alone at lunch.",
+            choices: [
+                { text: "Ignore them. Sitting with them might make you look less cool.", type: 'temporal', stress: 5, fulfillment: -15, feedback: "Worrying about social status can stop you from doing what's right, leaving you feeling empty." },
+                { text: "Invite them to sit with you, remembering everyone is valuable.", type: 'eternal', stress: 0, fulfillment: 25, feedback: "Acting out of love and service brings a deep sense of fulfillment that popularity can't match." }
+            ]
+        },
+        {
+            scenario: "You have a choice on Saturday: go to a popular party or volunteer at a local charity with your youth group.",
+            choices: [
+                { text: "Go to the party. You don't want to miss out on what everyone will be talking about.", type: 'temporal', stress: 10, fulfillment: 0, feedback: "Fear of missing out (FOMO) is a temporal value. It often brings temporary fun but little lasting fulfillment." },
+                { text: "Go volunteer. Serving others feels more meaningful and aligns with your faith.", type: 'eternal', stress: -5, fulfillment: 20, feedback: "Living for a purpose greater than yourself builds lasting fulfillment and character." }
+            ]
+        }
+    ];
+
+    let stressLevel = 0;
+    let fulfillmentLevel = 0;
+    let currentScenarioIndex = 0;
+
+    const stressLevelEl = document.getElementById('stress-level');
+    const fulfillmentLevelEl = document.getElementById('fulfillment-level');
+    const scenarioTextEl = document.getElementById('scenario-text');
+    const choicesContainerEl = document.getElementById('choices-container');
+    const feedbackContainerEl = document.getElementById('feedback-container');
+    const feedbackTextEl = document.getElementById('feedback-text');
+    const nextScenarioBtn = document.getElementById('next-scenario-btn');
+    const scenarioContainerEl = document.getElementById('scenario-container');
+    const gameEndContainerEl = document.getElementById('game-end-container');
+    const gameEndTextEl = document.getElementById('game-end-text');
+    const restartGameBtn = document.getElementById('restart-game-btn');
+
+
+    function updateNavButtons() {
+        backBtn.classList.toggle('invisible', currentSection === 0);
+        if (currentSection === sections.length - 2) { // Reflection section
+            nextBtn.textContent = 'Finish';
+        } else if (currentSection === sections.length - 1) { // Summary section
+            nextBtn.textContent = 'Start Over';
+        } else {
+            nextBtn.textContent = 'Next';
+        }
+    }
+
+    function updateProgressBar() {
+        const progress = ((currentSection + 1) / sections.length) * 100;
+        progressBar.style.width = `${progress}%`;
+    }
+
+    function showSection(index) {
+        sections.forEach((section, i) => {
+            section.classList.toggle('active', i === index);
+        });
+        if (index === 4) { // Game section
+            startGame();
+        }
+        updateNavButtons();
+        updateProgressBar();
+    }
+
+    function createValueCard(value) {
+        const card = document.createElement('div');
+        card.className = 'value-card bg-gray-100 p-3 rounded-lg text-center font-semibold text-gray-700 shadow-sm card';
+        card.textContent = value;
+        card.dataset.value = value;
+        card.addEventListener('click', () => toggleValueSort(card));
+        valueCardsContainer.appendChild(card);
+        valueStates[value] = null;
+    }
+    
+    function toggleValueSort(card) {
+        const value = card.dataset.value;
+        const currentState = valueStates[value];
+        if (currentState === null) { valueStates[value] = 'lasting'; } 
+        else if (currentState === 'lasting') { valueStates[value] = 'temporal'; } 
+        else { valueStates[value] = null; }
+        renderPiles();
+        updateChart();
+    }
+    
+    function renderPiles() {
+        document.querySelectorAll('.value-card').forEach(c => c.className = 'value-card bg-gray-100 p-3 rounded-lg text-center font-semibold text-gray-700 shadow-sm card');
+        temporalPile.innerHTML = '';
+        lastingPile.innerHTML = '';
+        Object.keys(valueStates).forEach(value => {
+            const state = valueStates[value];
+            const originalCard = document.querySelector(`.value-card[data-value="${value}"]`);
+            if (state) {
+                const pile = state === 'temporal' ? temporalPile : lastingPile;
+                const p = document.createElement('p');
+                p.textContent = value;
+                p.className = `text-sm font-medium px-2 py-1 rounded-md mb-1 ${state === 'temporal' ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`;
+                pile.appendChild(p);
+                originalCard.classList.add(state === 'temporal' ? 'selected-temporal' : 'selected-lasting');
+            }
+        });
+    }
+
+    function updateChart() {
+        const temporalCount = Object.values(valueStates).filter(v => v === 'temporal').length;
+        const lastingCount = Object.values(valueStates).filter(v => v === 'lasting').length;
+        const unsortedCount = Object.values(valueStates).filter(v => v === null).length;
+        valuesChart.data.datasets[0].data = [temporalCount, lastingCount, unsortedCount];
+        valuesChart.update();
+    }
+
+    function initializeChart() {
+        const ctx = document.getElementById('valuesChart').getContext('2d');
+        valuesChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Temporal', 'Lasting', 'Unsorted'],
+                datasets: [{
+                    label: 'Values Sorted',
+                    data: [0, 0, values.length],
+                    backgroundColor: ['#F59E0B', '#10B981', '#E5E7EB'],
+                    borderColor: '#FFFFFF',
+                    borderWidth: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: { legend: { position: 'bottom' }, tooltip: { enabled: true } }
+            }
+        });
+    }
+
+    function startGame() {
+        stressLevel = 0;
+        fulfillmentLevel = 0;
+        currentScenarioIndex = 0;
+        updateScores();
+        scenarioContainerEl.classList.remove('hidden');
+        feedbackContainerEl.classList.add('hidden');
+        gameEndContainerEl.classList.add('hidden');
+        loadScenario(currentScenarioIndex);
+    }
+
+    function loadScenario(index) {
+        const scenario = gameScenarios[index];
+        scenarioTextEl.textContent = scenario.scenario;
+        choicesContainerEl.innerHTML = '';
+        scenario.choices.forEach(choice => {
+            const button = document.createElement('button');
+            button.textContent = choice.text;
+            button.className = 'game-choice-btn w-full p-4 rounded-lg font-semibold text-white btn-animated';
+            const choiceClasses = choice.type === 'temporal' 
+                ? ['bg-amber-500', 'hover:bg-amber-600'] 
+                : ['bg-emerald-500', 'hover:bg-emerald-600'];
+            button.classList.add(...choiceClasses);
+            button.onclick = () => selectChoice(choice);
+            choicesContainerEl.appendChild(button);
+        });
+    }
+
+    function selectChoice(choice) {
+        stressLevel += choice.stress;
+        fulfillmentLevel += choice.fulfillment;
+        updateScores();
+
+        feedbackTextEl.textContent = choice.feedback;
+        feedbackTextEl.className = `font-semibold mb-4 ${choice.type === 'temporal' ? 'text-amber-800' : 'text-emerald-800'}`;
+        
+        scenarioContainerEl.classList.add('hidden');
+        feedbackContainerEl.classList.remove('hidden');
+    }
+
+    function nextScenario() {
+        currentScenarioIndex++;
+        if (currentScenarioIndex < gameScenarios.length) {
+            loadScenario(currentScenarioIndex);
+            scenarioContainerEl.classList.remove('hidden');
+            feedbackContainerEl.classList.add('hidden');
+        } else {
+            endGame();
+        }
+    }
+
+    function endGame() {
+        let endMessage = `Your final score is Stress: ${stressLevel} and Fulfillment: ${fulfillmentLevel}. `;
+        if (fulfillmentLevel > stressLevel) {
+            endMessage += "It looks like you're leaning towards an eternal perspective, finding more fulfillment than stress. That's a great path towards peace and purpose!";
+        } else {
+            endMessage += "It seems you faced a lot of stress, which is common in a temporal-focused life. Remember, finding your value in God is a journey that can lead to more fulfillment.";
+        }
+        gameEndTextEl.textContent = endMessage;
+        feedbackContainerEl.classList.add('hidden');
+        gameEndContainerEl.classList.remove('hidden');
+    }
+
+    function updateScores() {
+        stressLevelEl.textContent = stressLevel;
+        fulfillmentLevelEl.textContent = fulfillmentLevel;
+    }
+
+    nextScenarioBtn.addEventListener('click', nextScenario);
+    restartGameBtn.addEventListener('click', startGame);
+
+    nextBtn.addEventListener('click', () => {
+        if (currentSection === sections.length - 1) {
+            location.reload();
+        } else {
+            currentSection++;
+            showSection(currentSection);
+        }
+    });
+
+    backBtn.addEventListener('click', () => {
+        if (currentSection > 0) {
+            currentSection--;
+            showSection(currentSection);
+        }
+    });
+
+    showSection(currentSection);
+    if(valueCardsContainer.children.length === 0){
+        values.forEach(createValueCard);
+        initializeChart();
+    }
+});
+</script>
+
+</body>
+</html>
+
